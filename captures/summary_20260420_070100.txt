@@ -1,0 +1,29 @@
+Fluke ScopeMeter Capture Summary
+================================
+Timestamp: 2026-04-20 07:01:00
+Port: COM2
+Trace number: 20
+Scope ID: FLUKE 199C;V06.13;2003-11-25;ENGLISH,FRENCH,GERMAN,SPANISH,PORTUGUESE,ITALIAN,JAPANESE,KOREAN,CHINESE
+
+Waveform Summary
+----------------
+Y unit: A
+X unit: s
+Points downloaded: 300
+Samples per point: 2
+Sample interval dt: 0.000200000 s
+Capture length: 0.060000000 s
+Vertical scale: 20.0 A/div
+Horizontal scale: 0.005 s/div
+Y min: -52.400000 A
+Y max: 49.200000 A
+Y mean: -3.305333 A
+Y RMS: 30.964401 A
+Y pk-pk: 101.600000 A
+
+FFT Summary
+-----------
+Sample rate fs: 5000.000000 Hz
+Frequency resolution df: 16.666667 Hz
+Dominant frequency: 66.666667 Hz
+Dominant amplitude: 39.182035 A

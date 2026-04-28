@@ -1,0 +1,51 @@
+#!/bin/zsh
+
+set -u
+
+APP_PARENT="$(cd "$(dirname "$0")/../../.." && pwd)"
+RELEASE_DIR="$APP_PARENT/FlukeScopeSuite"
+LOG_DIR="$HOME/Desktop/FlukeScopeSuite_Captures"
+LOG_FILE="$LOG_DIR/app_launch.log"
+
+mkdir -p "$LOG_DIR"
+export PYTHONDONTWRITEBYTECODE=1
+export PYTHONPATH="$RELEASE_DIR"
+
+choose_python() {
+  for candidate in \
+    "$RELEASE_DIR/.venv/bin/python" \
+    "$APP_PARENT/fluke/.venv/bin/python" \
+    "$APP_PARENT/fluke/.venv312/bin/python" \
+    "/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12" \
+    "/usr/local/bin/python3.14" \
+    "/usr/local/bin/python3.12" \
+    "/usr/bin/python3"
+  do
+    if [ -x "$candidate" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
+
+PYTHON="$(choose_python)" || {
+  osascript -e 'display dialog "No usable Python interpreter was found for Fluke ScopeSuite." buttons {"OK"} default button "OK"'
+  exit 1
+}
+
+{
+  echo "===== Fluke ScopeSuite launch $(date) ====="
+  echo "Python: $PYTHON"
+  echo "Release: $RELEASE_DIR"
+  "$PYTHON" "$RELEASE_DIR/FlukeScopeSuite_Pro_v3.py"
+  status=$?
+  echo "Exit status: $status"
+  exit "$status"
+} >> "$LOG_FILE" 2>&1
+
+status=$?
+if [ "$status" -ne 0 ]; then
+  osascript -e "display dialog \"Fluke ScopeSuite failed to launch. See $LOG_FILE\" buttons {\"OK\"} default button \"OK\""
+fi
+exit "$status"

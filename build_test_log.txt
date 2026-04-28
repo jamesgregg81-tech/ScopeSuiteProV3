@@ -1,0 +1,547 @@
+Fluke ScopeSuite Pro V3 Build/Test Log
+======================================
+
+Timestamp: 2026-04-27 21:31 local
+Target EXE: dist\FlukeScopeMeterAnalyzerGUI.exe
+EXE size: 40724667 bytes
+
+Implemented
+-----------
+- Added Deep Memory Reconstruction outputs:
+  - stitched_replay_waveforms.csv
+  - deep_memory_full_capture.csv
+  - deep_memory_trends.csv
+  - deep_memory_worst_cases.csv
+  - DEEP_MEMORY_SUMMARY.txt
+  - deep_memory_full_capture.png
+  - deep_memory_trends.png
+- Added worst-case detector:
+  - lowest voltage
+  - highest current
+  - highest THD
+  - lowest power factor
+  - worst frequency deviation
+  - largest load-change transient
+- Added Waveform tab action:
+  - Analyze Full Capture (Deep Memory)
+- Kept per-frame replay export and analysis as the secondary view.
+- Replay cleanup retained:
+  - Load Saved Capture
+  - Load Capture (Debug Mode)
+  - Enable Debug Mode gate in Settings
+- UI cleanup retained:
+  - Sun/Light/Dark selected tab contrast is explicit and readable.
+- Logging cleanup retained:
+  - Generic ScopeMeter/Fluke 19x safe-mode labels.
+  - Actual model is parsed from ID response.
+
+Source Tests
+------------
+Command:
+python PythonProjects\FlukeScopeSuite\FlukeScopeSuite_Pro_v3.py --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\field_abuse_source_deep_memory_final.log
+
+Result: PASS
+Failures: 0
+
+Source checks passed:
+- layout/theme 720x500
+- layout/theme 853x533
+- layout/theme 1024x640
+- no COM selected
+- wrong COM port
+- corrupted capture replay
+- tiny corrupted waveform load
+- professional report extreme values
+- register/refresh extreme report
+- copy executive summary
+- missing report folder refresh
+- deep memory reconstruction synthetic
+
+Build
+-----
+Command:
+build_gui_exe.bat
+
+Result: PASS
+Output:
+dist\FlukeScopeMeterAnalyzerGUI.exe
+
+Packaged EXE Tests
+------------------
+Command:
+dist\FlukeScopeMeterAnalyzerGUI.exe --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\field_abuse_exe_deep_memory_final.log --port COM10
+
+Result: PASS
+Failures: 0
+
+Packaged checks passed:
+- layout/theme 720x500
+- layout/theme 853x533
+- layout/theme 1024x640
+- no COM selected
+- wrong COM port
+- corrupted capture replay
+- tiny corrupted waveform load
+- professional report extreme values
+- register/refresh extreme report
+- copy executive summary
+- missing report folder refresh
+- deep memory reconstruction synthetic
+- live COM10 safe ID
+- live COM10 safe screen capture
+
+COM Detection
+-------------
+Detected ports:
+COM1, COM3, COM4, COM5, COM6, COM7, COM8, COM9, COM10
+
+Live ScopeMeter Test
+--------------------
+Port: COM10
+Result: PASS
+Safe ID and screen capture completed without leaving the meter in remote mode.
+
+Normal Launch Smoke Test
+------------------------
+Result: PASS
+The rebuilt windowed EXE launched and stayed running until closed.
+
+Stop Condition
+--------------
+- Code compiles: PASS
+- EXE builds successfully: PASS
+- Smoke tests pass: PASS
+
+Analyze This Screen Image-Only Fallback Fix
+-------------------------------------------
+Timestamp: 2026-04-27 21:56 local
+
+Implemented:
+- Report title changed to "Analyze This Screen - Image Only Fallback Report".
+- ANALYZE_THIS_SCREEN.txt now starts with the required no-live-data warning.
+- SUMMARY_METRICS.csv now includes:
+  analysis_mode=PNG_FALLBACK_ONLY
+  connected=false
+  live_serial_used=false
+  waveform_samples_valid=false
+  power_quality_valid=false
+- PNG fallback mode no longer creates waveform_samples.csv.
+- Reports tab labels the fallback package as "Image-only fallback report completed."
+- Fallback file list shows:
+  screen_capture.png
+  ANALYZE_THIS_SCREEN.txt
+  SUMMARY_METRICS.csv
+- Added "Live Waveform Analysis" button for live-only QW analysis.
+- Live-only mode writes "Waveform Data Unavailable" instead of fallback power-quality numbers if QW fails.
+
+Source validation:
+python PythonProjects\FlukeScopeSuite\FlukeScopeSuite_Pro_v3.py --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\field_abuse_image_fallback_fix.log
+Result: PASS, failures=0
+
+Packaged EXE validation:
+dist\FlukeScopeMeterAnalyzerGUI.exe --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\field_abuse_image_fallback_fix_exe.log
+Result: PASS, failures=0
+
+Acceptance test:
+- Analyze This Screen while NOT_CONNECTED / safe image-only mode: PASS
+- File generation passed.
+- TXT/CSV clearly state PNG fallback only and no real waveform/power-quality analysis.
+- No fallback waveform_samples.csv generated.
+
+Rebuilt EXE:
+dist\FlukeScopeMeterAnalyzerGUI.exe
+Size: 40,729,276 bytes
+LastWriteTime: 2026-04-27 21:56:27 local
+
+199C Safe Mode Single Waveform Report Fix
+-----------------------------------------
+Timestamp: 2026-04-27 22:04 local
+
+Implemented:
+- Single Screen Waveform Report now has a ScopeMeter Safe Mode path.
+- Safe mode path uses ID at 1200 baud, then attempts QW 10 and QW 20 at the confirmed working baud.
+- Safe mode path does not issue GR.
+- Safe mode path does not issue PC 9600 unless Advanced Transfer Mode is explicitly enabled.
+- If QW fails in safe mode, the app writes one diagnostic file:
+  WAVEFORM_REPORT_UNAVAILABLE.txt
+- The diagnostic file contains:
+  "Waveform data unavailable in 199C Safe Mode. Use Replay Capture or Image-Only Screen Snapshot."
+- The unavailable state no longer registers a mostly empty report folder or lists a large missing-files set.
+- Added clear result-state logging:
+  CONNECT_TEST_PASS
+  WAVEFORM_REPORT_UNAVAILABLE
+  WAVEFORM_REPORT_PASS
+  WAVEFORM_REPORT_FAIL
+
+Source validation:
+python PythonProjects\FlukeScopeSuite\FlukeScopeSuite_Pro_v3.py --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\field_abuse_safe_single_waveform.log
+Result: PASS, failures=0
+
+Packaged EXE validation:
+dist\FlukeScopeMeterAnalyzerGUI.exe --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\field_abuse_safe_single_waveform_exe.log
+Result: PASS, failures=0
+
+Acceptance checks:
+- Simulated FLUKE 199C safe-mode single waveform unavailable: PASS
+- Verified command sequence: ID, QW 10, QW 20
+- Verified forbidden commands were not issued: GR, PC 9600
+- Verified one diagnostic TXT file only when QW fails
+- Verified no missing-files noise in the report UI
+- Live COM10 safe ID: PASS
+
+Rebuilt EXE:
+dist\FlukeScopeMeterAnalyzerGUI.exe
+Size: 40,733,864 bytes
+LastWriteTime: 2026-04-27 22:03:21 local
+
+196B Legacy Safe ID Profile Fix
+-------------------------------
+Timestamp: 2026-04-27 22:28 local
+
+Implemented:
+- Renamed the safe workflow label from 199C/ScopeMeter Safe Mode to Legacy Safe ID Mode.
+- Added an instrument profile stored after Connect Test:
+  model, ident, port, baud, safe_mode, remote_used.
+- Connect Test on safe mode now records:
+  FLUKE 196B / COM10 / 1200 baud / safe mode.
+- Single Screen Waveform Report now reuses or reconnects with the saved profile exactly.
+- Safe profile reconnect does not scan 9600 first.
+- Safe profile reconnect does not send GR before ID.
+- Safe profile disconnect closes the serial port without GL unless remote mode was used.
+- Added stale-byte drain and one ID retry at the same baud only; no GR and no baud scan.
+- Direct safe capture also uses the saved profile baud/port.
+- Single waveform-only report no longer expects screen_capture.png, avoiding false missing-file noise.
+
+Required log line added:
+Using active instrument profile: FLUKE 196B at COM10 / 1200 baud / safe mode
+
+Source validation:
+python PythonProjects\FlukeScopeSuite\FlukeScopeSuite_Pro_v3.py --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\field_abuse_196b_profile_final.log
+Result: PASS, failures=0
+
+Packaged EXE validation:
+dist\FlukeScopeMeterAnalyzerGUI.exe --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\field_abuse_196b_profile_final_exe.log
+Result: PASS, failures=0
+
+Live 196B / COM10 validation:
+- Safe Connect Test: PASS
+- ID response: FLUKE 196B;V06.12;2003-06-17;ENGLISH,FRENCH,GERMAN,SPANISH,PORTUGUESE,ITALIAN,JAPANESE,KOREAN,CHINESE
+- Active profile: FLUKE 196B at COM10 / 1200 baud / safe mode
+- Single Screen Waveform Report: PASS
+- Commands observed in safe report path: ID, QW 10, QW 20
+- No GR issued.
+- No PC 9600 issued.
+- QW 10 and QW 20 both ACK=0 and produced waveform data.
+- Report folder:
+  C:\Users\JimGr\Desktop\FlukeScopeSuite_Captures\2026-04-27_22-26-18_NOT_CONNECTED\reports\single_2026-04-27_22-26-19
+- Generated report files include:
+  SINGLE_WAVEFORM_REPORT.txt
+  PROFESSIONAL_REPORT.html
+  PROFESSIONAL_REPORT.pdf
+  SUMMARY_METRICS.csv
+  waveform_samples.csv
+  single_waveform_A.csv
+  single_waveform_B.csv
+  single_waveform_plot.png
+  single_fft_plot.png
+
+2026-04-28 08:28 local - Tablet split review layout + replay timebase calibration
+
+Changes applied:
+- Tablet mode Screen Capture tab changed to split review layout:
+  controls and saved-capture actions on the left, Scope Screen Preview on the right.
+- Screen preview now scales to fill the preview pane, including upscaling when useful.
+- Added calibration setting:
+  Fluke replay timebase correction
+  Default: 1.0
+  Field preset: 1.111111111
+  Expected line frequency setting: 60.0 / 50.0 / 0.0
+- Calibration settings save/load with user settings.
+- Replay waveform decoded delta_x is corrected before FFT, frequency, harmonic, phase, power, and trend calculations.
+- Added calibration check:
+  if expected line frequency is 60 Hz and measured frequency is 65-68 Hz, app suggests TIMEBASE_CORRECTION = 1.111111111.
+
+Source regression:
+python PythonProjects\FlukeScopeSuite\FlukeScopeSuite_Pro_v3.py --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\tablet_timebase_source.log
+Result: PASS, failures=0
+
+Packaged EXE rebuilt:
+PythonProjects\FlukeScopeSuite\dist\FlukeScopeSuiteV2AutoTune.exe
+Size: 40,754,090 bytes
+LastWriteTime: 2026-04-28 08:28:23 local
+
+Packaged EXE regression:
+dist\FlukeScopeSuiteV2AutoTune.exe --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\tablet_timebase_exe.log
+Result: PASS, failures=0
+
+Key tests passed:
+- Tablet viewports: 720x500, 853x533, 1024x640, 1920x1080
+- Visible GUI button inventory
+- No COM selected
+- Wrong COM port
+- Corrupted capture replay
+- Image-only fallback report
+- Simulated 196B and 199C safe connect profiles
+- 196B legacy safe single waveform unavailable path
+- 196B legacy safe single waveform report success path
+- Timebase correction calibration setting
+- Deep memory reconstruction synthetic
+
+2026-04-28 09:50 local - Analyzer PNG preview canvas raise fix
+
+Bug reported:
+- Previewing screen_capture.png from an Analyze This Screen report failed with:
+  wrong # args: should be ".!notebook.!frame5.!frame2.!frame.!canvas raise tagOrId ?aboveThis?"
+
+Root cause:
+- The report preview code called report_canvas.tkraise().
+- For tk.Canvas this can resolve to the Canvas item-raise command instead of the generic widget raise command.
+- Tk then expected a canvas tag/id and failed before rendering the PNG preview.
+
+Fix applied:
+- Changed the report image preview pane to call tk.Misc.tkraise(report_canvas), explicitly raising the widget frame.
+- Added regression coverage that previews screen_capture.png from the image-only fallback report path.
+
+Rebuilt Industrial EXE:
+PythonProjects\FlukeScopeSuite\dist\FlukeScopeSuiteV2AutoTune.exe
+Size: 40,755,228 bytes
+LastWriteTime: 2026-04-28 09:50:33 local
+
+Source regression:
+python PythonProjects\FlukeScopeSuite\FlukeScopeSuite_Pro_v3.py --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\preview_canvas_fix_source2.log
+Result: PASS, failures=0
+
+Packaged EXE regression:
+Start-Process dist\FlukeScopeSuiteV2AutoTune.exe --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\preview_canvas_fix_exe_wait.log; Wait-Process
+Result: PASS, failures=0
+
+2026-04-28 10:09 local - Screen Capture tab workflow cleanup
+
+Reason:
+- Screen Capture tab had Analyze This Screen and Live Waveform Analysis buttons.
+- Those actions depend on image-only reporting or QW waveform samples, not the screen capture preview itself.
+- On tablet screens the Saved Capture Files area was pushed too low and could fall below the visible area.
+
+Changes applied:
+- Screen Capture tab now focuses on screen-image tasks only:
+  Capture Screen
+  Load Saved Capture
+  Open Last Screen Image
+  Copy Latest Screen to Clipboard
+  New Session
+  Open Output Folder
+- Moved Live Waveform Analysis to the Waveform tab.
+- Moved the former Analyze This Screen action to the Waveform tab and renamed it:
+  Image-Only Screen Report
+- Hidden debug capture loader no longer leaves an empty frame in Screen Capture when debug mode is off.
+
+Rebuilt Industrial EXE:
+PythonProjects\FlukeScopeSuite\dist\FlukeScopeSuiteV2AutoTune.exe
+Size: 40,755,369 bytes
+LastWriteTime: 2026-04-28 10:09:54 local
+
+Source regression:
+python PythonProjects\FlukeScopeSuite\FlukeScopeSuite_Pro_v3.py --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\screen_capture_menu_cleanup_source2.log
+Result: PASS, failures=0
+
+Packaged EXE regression:
+Start-Process dist\FlukeScopeSuiteV2AutoTune.exe --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\screen_capture_menu_cleanup_exe.log; Wait-Process
+Result: PASS, failures=0
+
+2026-04-28 11:08 local - Capture folder cleanup / lazy session creation
+
+Problem:
+- C:\Users\JimGr\Desktop\FlukeScopeSuite_Captures was being flooded with top-level NOT_CONNECTED session folders.
+- Most of these folders contained only session_log.txt from startup or failed/no-meter tests.
+
+Changes applied:
+- App no longer creates a top-level capture session folder at startup.
+- Startup begins at the capture root and creates a real session only when a capture/report/export needs files.
+- Connected instruments still get model-named folders, e.g. *_196B.
+- Not-connected manual New Session now uses *_SESSION instead of *_NOT_CONNECTED.
+- Report/export actions call ensure_session() before writing, so real outputs still land in a session folder.
+- Existing log-only NOT_CONNECTED folders were moved, not deleted, to:
+  C:\Users\JimGr\Desktop\FlukeScopeSuite_Captures\_diagnostics
+- Top-level NOT_CONNECTED folders remaining after cleanup: none.
+
+Rebuilt Industrial EXE:
+PythonProjects\FlukeScopeSuite\dist\FlukeScopeSuiteV2AutoTune.exe
+Size: 40,753,681 bytes
+LastWriteTime: 2026-04-28 11:08:15 local
+
+Source regression:
+python PythonProjects\FlukeScopeSuite\FlukeScopeSuite_Pro_v3.py --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\capture_folder_cleanup_source2.log
+Result: PASS, failures=0
+
+Packaged EXE regression:
+Start-Process dist\FlukeScopeSuiteV2AutoTune.exe --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\capture_folder_cleanup_exe.log; Wait-Process
+Result: PASS, failures=0
+
+2026-04-28 11:13 local - Load Saved Capture stays in Screen Capture
+
+Problem:
+- Screen Capture tab > Load Saved Capture allowed selecting a PNG/screen capture.
+- After loading, the app generated an image-only fallback report and jumped to Analyzer/Reports.
+- This contradicted the Screen Capture workflow: PNG screen captures are preview/documentation, not waveform analysis.
+
+Changes applied:
+- Loading a saved PNG/JPG/BMP screen capture now only loads it into the Scope Screen Preview.
+- Loading a saved raw screen-capture BIN that decodes as a screen now only loads it into preview.
+- The app explicitly switches/keeps the user on Screen Capture after loading a saved screen.
+- No image-only fallback report is generated from Screen Capture > Load Saved Capture.
+- Log message now states no waveform or power-quality analysis was run from the image.
+- Files that do not decode as screen captures can still fall through to waveform handling.
+
+Rebuilt Industrial EXE:
+PythonProjects\FlukeScopeSuite\dist\FlukeScopeSuiteV2AutoTune.exe
+Size: 40,758,117 bytes
+LastWriteTime: 2026-04-28 11:13:43 local
+
+Source regression:
+python PythonProjects\FlukeScopeSuite\FlukeScopeSuite_Pro_v3.py --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\saved_screen_preview_source.log
+Result: PASS, failures=0
+
+Packaged EXE regression:
+Start-Process dist\FlukeScopeSuiteV2AutoTune.exe --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\saved_screen_preview_exe.log; Wait-Process
+Result: PASS, failures=0
+
+Rebuilt EXE:
+dist\FlukeScopeMeterAnalyzerGUI.exe
+Size: 40,738,451 bytes
+LastWriteTime: 2026-04-27 22:28:22 local
+
+Full ScopeSuite EXE Smoke/Regression
+------------------------------------
+Timestamp: 2026-04-27 22:38 local
+
+Fixes applied during this run:
+- Reports tab button label changed from "Export Folder" to "Open Reports Folder".
+- Connect Test now renames the active session folder after successful ID, so reports no longer land under NOT_CONNECTED.
+- Added packaged live smoke command:
+  --live-single-report-smoke
+- Expanded automated regression to validate generated files, not just command return codes.
+
+Automated checks added/updated:
+- Visible GUI button inventory across tabs: 52 buttons inventoried.
+- Layout/theme checks: 720x500, 853x533, 1024x640, 1920x1080.
+- No COM selected.
+- Wrong COM port.
+- Open output/reports folder path.
+- Corrupted capture replay.
+- Tiny/corrupted waveform load.
+- Professional report generation with extreme waveform values.
+- Executive summary / Copy Summary.
+- Missing report folder refresh.
+- Simulated FLUKE 196B safe profile.
+- Simulated FLUKE 199C safe profile.
+- 196B Legacy Safe ID Mode unavailable-QW report.
+- 196B Legacy Safe ID Mode successful waveform report.
+- Deep Memory Reconstruction synthetic dataset.
+- Generated report inspection:
+  file exists
+  file size > 0
+  CSV headers valid
+  HTML has valid structure
+  PNG files open
+  no traceback text
+  critical summary fields not blank/nan
+
+Source regression:
+python PythonProjects\FlukeScopeSuite\FlukeScopeSuite_Pro_v3.py --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\full_scope_regression_source_final.log
+Result: PASS, failures=0
+
+Packaged EXE regression:
+dist\FlukeScopeMeterAnalyzerGUI.exe --field-abuse-self-test --self-test-log C:\Users\JimGr\Desktop\full_scope_regression_exe_final2.log
+Result: PASS, failures=0
+
+Packaged EXE live 196B smoke:
+dist\FlukeScopeMeterAnalyzerGUI.exe --live-single-report-smoke --port COM10 --self-test-log C:\Users\JimGr\Desktop\live_196b_single_report_exe_final.log
+Result: PASS, failures=0
+
+Live 196B findings:
+- Safe ID at COM10 / 1200 baud: PASS
+- ID response: FLUKE 196B;V06.12;2003-06-17;ENGLISH,FRENCH,GERMAN,SPANISH,PORTUGUESE,ITALIAN,JAPANESE,KOREAN,CHINESE
+- Active profile: FLUKE 196B at COM10 / 1200 baud / safe mode
+- Session folder renamed to:
+  C:\Users\JimGr\Desktop\FlukeScopeSuite_Captures\2026-04-27_22-38-23_196B
+- Single Screen Waveform Report: PASS
+- Commands observed: ID, QW 10, QW 20
+- No GR issued.
+- No PC 9600 issued.
+- QW 10 and QW 20 both ACK=0 and produced waveform data.
+- Missing expected report files: none
+- Generated report files verified:
+  SINGLE_WAVEFORM_REPORT.txt
+  PROFESSIONAL_REPORT.html
+  PROFESSIONAL_REPORT.pdf
+  SUMMARY_METRICS.csv
+  waveform_samples.csv
+  waveform_plot.png
+  fft_spectrum.png
+  harmonic_summary.png
+  single_waveform_A.csv
+  single_waveform_B.csv
+  single_waveform_plot.png
+  single_fft_plot.png
+
+Rebuilt EXE:
+dist\FlukeScopeMeterAnalyzerGUI.exe
+Size: 40,749,528 bytes
+LastWriteTime: 2026-04-27 22:37:17 local
+
+Industrial Edition EXE / Legacy Prolific Driver Validation
+---------------------------------------------------------
+Timestamp: 2026-04-28 08:04 local
+
+Problem observed by field test:
+- User launched:
+  PythonProjects\FlukeScopeSuite\dist\FlukeScopeSuiteV2AutoTune.exe
+- That EXE was stale and still logged "199C Safe Mode".
+- COM10 initially failed before any ScopeMeter command:
+  OSError(22, 'A device which does not exist was specified.', None, 433)
+- Windows listed COM10 as:
+  PL2303HXA PHASED OUT SINCE 2012. PLEASE CONTACT YOUR SUPPLIER.
+
+Fixes/actions:
+- Rebuilt the actual Industrial Edition EXE:
+  PythonProjects\FlukeScopeSuite\dist\FlukeScopeSuiteV2AutoTune.exe
+- Added clearer serial-open diagnostics for COM ports that Windows lists but refuses to open.
+- User uninstalled the Windows-updated Prolific driver and installed the legacy driver.
+- COM10 then changed to:
+  Prolific USB-to-Serial Comm Port (COM10)
+- Direct pyserial open check for COM10 at 1200 baud: PASS
+
+Rebuilt Industrial EXE:
+PythonProjects\FlukeScopeSuite\dist\FlukeScopeSuiteV2AutoTune.exe
+Size: 40,750,352 bytes
+LastWriteTime: 2026-04-28 08:03:12 local
+
+Live 196B smoke on rebuilt Industrial EXE:
+dist\FlukeScopeSuiteV2AutoTune.exe --live-single-report-smoke --port COM10 --self-test-log C:\Users\JimGr\Desktop\live_196b_v2autotune_legacy_driver.log
+Result: PASS, failures=0
+
+Live result:
+- Safe ID at COM10 / 1200 baud: PASS
+- ID response: FLUKE 196B;V06.12;2003-06-17;ENGLISH,FRENCH,GERMAN,SPANISH,PORTUGUESE,ITALIAN,JAPANESE,KOREAN,CHINESE
+- Active profile: FLUKE 196B at COM10 / 1200 baud / safe mode
+- Session folder renamed to:
+  C:\Users\JimGr\Desktop\FlukeScopeSuite_Captures\2026-04-28_08-03-48_196B
+- Single Screen Waveform Report: PASS
+- Commands observed: ID, QW 10, QW 20
+- No GR issued.
+- No PC 9600 issued.
+- QW 10 and QW 20 both ACK=0 and produced waveform data.
+- Missing expected report files: none
+- Generated report files verified:
+  SINGLE_WAVEFORM_REPORT.txt
+  PROFESSIONAL_REPORT.html
+  PROFESSIONAL_REPORT.pdf
+  SUMMARY_METRICS.csv
+  waveform_samples.csv
+  waveform_plot.png
+  fft_spectrum.png
+  harmonic_summary.png
+  single_waveform_A.csv
+  single_waveform_B.csv
+  single_waveform_plot.png
+  single_fft_plot.png
