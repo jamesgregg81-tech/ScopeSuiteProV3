@@ -1,8 +1,17 @@
+# Python virtual environments
+.venv/
+.venv*/
+env/
+venv/
+
+# Python cache
 __pycache__/
 *.pyc
-*.pyo
-build/
+
+# Build outputs
 dist/
-.vscode/
-*.log
+build/
 *.exe
+
+# Logs
+*.log
