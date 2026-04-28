@@ -2522,13 +2522,10 @@ class FlukeScopeSuiteProV3:
 
             if safe_single:
                 self.log_msg(
-                    f"{SAFE_MODE_LABEL}: Single Waveform Report uses ID/QW at {INITIAL_BAUD} baud only; "
-                    f"no GR, no PC {WORK_BAUD}"
+                    f"{SAFE_MODE_LABEL}: Single Waveform Report uses ID/QW only; "
+                    f"no GR, no PC {WORK_BAUD}. Default baud={INITIAL_BAUD}; known PC-ACK baud may be reused."
                 )
-                if self.instrument_profile.get("ident") and self.instrument_profile.get("safe_mode"):
-                    ser, client, ident = self.reconnect_using_active_profile(xonxoff=False)
-                else:
-                    ser, client, ident = self.connect_1200_id_only(xonxoff=False)
+                ser, client, ident = self.connect_safe_id_known_baud_recovery(xonxoff=False)
                 self.track_serial_session(ser, client)
                 self.instrument_id = ident
                 model = scope_model_from_ident(ident)
@@ -2821,7 +2818,7 @@ class FlukeScopeSuiteProV3:
         self.log_msg("No open serial session available; connecting")
         return self.connect_and_upgrade_baud(xonxoff=xonxoff)
 
-    def connect_1200_id_only(self, xonxoff=False):
+    def connect_id_only_at_baud(self, baud=INITIAL_BAUD, xonxoff=False, label=None, update_safe_profile=True):
         port = self.port_var.get().strip()
         if not port:
             raise RuntimeError("No serial port selected.")
@@ -2829,10 +2826,12 @@ class FlukeScopeSuiteProV3:
             self.log_msg(f"{SAFE_MODE_LABEL}: closing old serial handle before ID-only connect")
             self.close_serial_session_only(self.active_serial, "Legacy Safe ID Mode old session")
 
-        self.log_msg(f"{SAFE_MODE_LABEL}: opening serial port {port} at {INITIAL_BAUD} baud for ID only")
-        client = self.serial_client(baudrate=INITIAL_BAUD, xonxoff=xonxoff)
+        baud = int(baud or INITIAL_BAUD)
+        label = label or f"{SAFE_MODE_LABEL}: opening serial port {port} at {baud} baud for ID only"
+        self.log_msg(label)
+        client = self.serial_client(baudrate=baud, xonxoff=xonxoff)
         ser = client.open()
-        self.log_msg(f"{SAFE_MODE_LABEL}: port opened: {port} at {INITIAL_BAUD}")
+        self.log_msg(f"{SAFE_MODE_LABEL}: port opened: {port} at {baud}")
         self.track_serial_session(ser, client)
         try:
             time.sleep(0.3)
@@ -2846,13 +2845,13 @@ class FlukeScopeSuiteProV3:
             ident_clean = self.clean_ident_response(ident)
             if not ident_clean.upper().startswith("FLUKE"):
                 raise RuntimeError(f"Unexpected ID response: {ident!r}")
-            self.current_scope_baud = INITIAL_BAUD
+            self.current_scope_baud = baud
             self.instrument_id = ident_clean
             profile = self.update_instrument_profile(
                 ident=ident_clean,
                 port=port,
-                baud=INITIAL_BAUD,
-                safe_mode=True,
+                baud=baud,
+                safe_mode=bool(update_safe_profile),
                 remote_used=False,
             )
             model = profile["model"]
@@ -2862,6 +2861,50 @@ class FlukeScopeSuiteProV3:
         except Exception:
             self.close_serial_session_only(ser, "Legacy Safe ID Mode Connect Test failed")
             raise
+
+    def connect_1200_id_only(self, xonxoff=False):
+        return self.connect_id_only_at_baud(
+            INITIAL_BAUD,
+            xonxoff=xonxoff,
+            label=f"{SAFE_MODE_LABEL}: opening serial port {self.port_var.get().strip()} at {INITIAL_BAUD} baud for ID only",
+            update_safe_profile=True,
+        )
+
+    def connect_safe_id_known_baud_recovery(self, xonxoff=False):
+        candidates = []
+
+        profile = self.instrument_profile or {}
+        profile_baud = int(profile.get("baud") or 0)
+        if profile.get("safe_mode") and profile.get("ident") and profile_baud:
+            candidates.append((profile_baud, "saved safe profile"))
+
+        candidates.append((INITIAL_BAUD, "default safe baud"))
+
+        for baud, reason in (
+            (profile_baud, "last saved profile baud"),
+            (int(self.current_scope_baud or 0), "last known PC-ACK baud"),
+        ):
+            if baud and baud != INITIAL_BAUD and all(existing != baud for existing, _ in candidates):
+                candidates.append((baud, reason))
+
+        last_error = None
+        for baud, reason in candidates:
+            try:
+                if baud != INITIAL_BAUD:
+                    self.log_msg(
+                        f"{SAFE_MODE_LABEL}: 1200 baud may be unavailable after prior PC ACK; "
+                        f"trying {reason} {baud} baud with ID only, no GR, no PC"
+                    )
+                return self.connect_id_only_at_baud(
+                    baud,
+                    xonxoff=xonxoff,
+                    label=f"{SAFE_MODE_LABEL}: opening serial port {self.port_var.get().strip()} at {baud} baud for ID only ({reason})",
+                    update_safe_profile=True,
+                )
+            except Exception as exc:
+                last_error = exc
+                self.log_msg(f"{SAFE_MODE_LABEL}: ID-only connect failed at {baud} baud ({reason}): {exc}")
+        raise last_error or RuntimeError("Legacy Safe ID Mode could not identify the ScopeMeter at known bauds.")
 
     def clean_ident_response(self, ident):
         text = str(ident or "").replace("\x00", "").strip()
@@ -3483,6 +3526,7 @@ class FlukeScopeSuiteProV3:
     def download_waveform_raw(self, trace_no):
         ser = None
         client = None
+        safe_waveform = self.safe_199c_mode_var.get() and not self.advanced_transfer_mode_var.get()
         try:
             self.apply_calibration_settings(save=False)
             self.log_msg(f"Starting raw waveform download for trace {trace_no}...")
@@ -3491,9 +3535,17 @@ class FlukeScopeSuiteProV3:
             self.ensure_session(reason="raw waveform download")
             ts = time.strftime("%Y%m%d_%H%M%S")
             name = "A" if trace_no == "10" else "B" if trace_no == "20" else trace_no
-            raw_file = self.outdir / f"fluke199c_waveform_{name}_{ts}.bin"
+            prefix = "fluke19x_safe_waveform" if safe_waveform else "fluke199c_waveform"
+            raw_file = self.outdir / f"{prefix}_{name}_{ts}.bin"
 
-            ser, client, ident = self.connect_and_upgrade_baud()
+            if safe_waveform:
+                self.log_msg(
+                    f"{SAFE_MODE_LABEL}: raw waveform download uses ID/QW only; "
+                    f"no GR, no PC {WORK_BAUD}, no GL"
+                )
+                ser, client, ident = self.connect_safe_id_known_baud_recovery(xonxoff=False)
+            else:
+                ser, client, ident = self.connect_and_upgrade_baud()
             self.instrument_id = ident
             self.ui_call(self.update_settings_display)
             self.log_msg(f"Active transfer baud: {client.baudrate}")
@@ -3515,7 +3567,10 @@ class FlukeScopeSuiteProV3:
             self.show_error("Waveform Error", exc)
         finally:
             if ser is not None and client is not None:
-                self.release_serial_session(ser, client)
+                if safe_waveform:
+                    self.close_serial_session_only(ser, f"{SAFE_MODE_LABEL} raw waveform download")
+                else:
+                    self.release_serial_session(ser, client)
 
     def save_decoded_qw_outputs(self, wf, raw_file, trace_no):
         from .waveform_protocol import save_single_waveform_plot, waveform_stats

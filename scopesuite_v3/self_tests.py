@@ -679,6 +679,120 @@ def run_field_abuse_selftest(argv=None):
 
         failures += 0 if check("196B legacy safe single waveform unavailable", safe_mode_single_waveform_unavailable_check) else 1
 
+        def safe_raw_waveform_download_uses_id_qw_only():
+            from . import waveform_protocol
+
+            old_outdir = app.outdir
+            old_port = app.port_var.get()
+            old_safe = app.safe_199c_mode_var.get()
+            old_advanced = app.advanced_transfer_mode_var.get()
+            old_serial_client = app.serial_client
+            old_query_waveform = waveform_protocol.query_waveform
+            old_profile = dict(app.instrument_profile)
+            old_ident = app.instrument_id
+            old_baud = app.current_scope_baud
+            commands = []
+
+            class FakeSer:
+                is_open = True
+                timeout = 1.0
+
+                def flush(self):
+                    pass
+
+                def reset_input_buffer(self):
+                    pass
+
+                def reset_output_buffer(self):
+                    pass
+
+                def close(self):
+                    self.is_open = False
+
+                def read(self, _n=1):
+                    return b""
+
+            class FakeClient:
+                baudrate = 1200
+
+                def open(self):
+                    return FakeSer()
+
+                def query_ascii_allow_ack(self, ser, cmd, timeout=8.0, clear_input=True):
+                    commands.append(cmd)
+                    if cmd != "ID":
+                        raise RuntimeError(f"Unexpected safe raw command: {cmd}")
+                    return b"0", "FLUKE 196B;V06.12;2003-06-17"
+
+                def send_cmd(self, ser, cmd, *args, **kwargs):
+                    commands.append(cmd)
+                    if cmd.startswith("GR") or cmd.startswith("PC") or cmd.startswith("GL"):
+                        raise RuntimeError(f"Forbidden command in safe raw waveform path: {cmd}")
+
+            def fake_serial_client(baudrate=1200, xonxoff=False):
+                if baudrate != 1200:
+                    raise RuntimeError(f"Safe raw waveform path should not open baud {baudrate}")
+                return FakeClient()
+
+            def fake_query_waveform(ser, client, trace_no):
+                commands.append(f"QW {trace_no}")
+                x = [idx * 0.0002 for idx in range(300)]
+                y = [120.0 * math.sqrt(2.0) * math.sin(2.0 * math.pi * 60.0 * t) for t in x]
+                return {
+                    "x": x,
+                    "y": y,
+                    "delta_x": 0.0002,
+                    "n_points": len(x),
+                    "adc_min": int(min(y)),
+                    "adc_max": int(max(y)),
+                    "volts_per_div": 200.0,
+                    "time_per_div": 0.005,
+                    "y_scale": 200.0,
+                    "y_unit": "V",
+                    "x_scale": 0.005,
+                    "x_unit": "s",
+                    "y_resolution": 8.0,
+                    "sample_width": 1,
+                    "samples_per_point": 1,
+                    "trace_no": str(trace_no),
+                    "trace_source": "Channel A",
+                }, b"synthetic-qw"
+
+            try:
+                app.outdir = tmp / "safe_raw_waveform"
+                app.outdir.mkdir(parents=True, exist_ok=True)
+                app.port_var.set("COM10")
+                app.safe_199c_mode_var.set(True)
+                app.advanced_transfer_mode_var.set(False)
+                app.instrument_id = "FLUKE 196B;V06.12;2003-06-17"
+                app.current_scope_baud = 1200
+                app.update_instrument_profile(
+                    ident=app.instrument_id,
+                    port="COM10",
+                    baud=1200,
+                    safe_mode=True,
+                    remote_used=False,
+                )
+                app.serial_client = fake_serial_client
+                waveform_protocol.query_waveform = fake_query_waveform
+                app.download_waveform_raw("10")
+                if any(cmd.startswith("GR") or cmd.startswith("PC") or cmd.startswith("GL") for cmd in commands):
+                    raise RuntimeError(f"Forbidden command in safe raw path: {commands}")
+                if commands != ["ID", "QW 10"]:
+                    raise RuntimeError(f"Unexpected safe raw waveform commands: {commands}")
+            finally:
+                app.outdir = old_outdir
+                app.port_var.set(old_port)
+                app.safe_199c_mode_var.set(old_safe)
+                app.advanced_transfer_mode_var.set(old_advanced)
+                app.serial_client = old_serial_client
+                waveform_protocol.query_waveform = old_query_waveform
+                app.instrument_profile = old_profile
+                app.instrument_id = old_ident
+                app.current_scope_baud = old_baud
+
+        failures += 0 if check("196B safe raw waveform uses ID/QW only", safe_raw_waveform_download_uses_id_qw_only) else 1
+
         def synthetic_196b_safe_single_waveform_success_check():
             from . import waveform_protocol
             import numpy as np
