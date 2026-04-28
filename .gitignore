@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.exe
+dist/
+build/
+*.spec.bak
+*.log
+*.tmp
+local_screen_capture_tests/
+._*
+gui_primary_screenshot.png
